@@ -16,6 +16,47 @@ pytestmark = [
 ]
 
 
+@pytest.mark.parametrize(
+    ("config_text", "cli_args", "expected"),
+    [
+        (None, [], "http://localhost:8000"),
+        ("port: 8100\n", [], "http://localhost:8100"),
+        ("host: '::1'\nport: 8100\n", [], "http://[::1]:8100"),
+        (
+            "host: 127.0.0.1\nport: 8100\nmodel: facebook/opt-125m\n",
+            ["--port", "8200"],
+            "http://127.0.0.1:8200",
+        ),
+        (
+            "host: 127.0.0.1\nport: 8100\n",
+            ["--host=localhost", "-p", "8200"],
+            "http://localhost:8200",
+        ),
+    ],
+)
+def test_server_address_uses_config_with_cli_precedence(
+    tmp_path, config_text, cli_args, expected
+):
+    """Probe and cache-reset URLs must use the server's effective address."""
+    cmd = ["vllm", "serve", "facebook/opt-125m", *cli_args]
+    if config_text is not None:
+        config = tmp_path / "serve.yaml"
+        config.write_text(config_text)
+        cmd.extend(["--config", str(config)])
+
+    server = ServerProcess(cmd, [], show_stdout=False)
+    assert server.server_address == expected
+
+
+def test_custom_server_config_is_not_parsed_as_vllm_yaml():
+    server = ServerProcess(
+        ["custom-server", "--config", "server.conf", "--port", "8100"],
+        [],
+        show_stdout=False,
+    )
+    assert server.server_address == "http://localhost:8100"
+
+
 @pytest.mark.parametrize("stop_kwargs", [{}, {"grace_period": 1.0}])
 @pytest.mark.parametrize("parent_exits", [False, True])
 def test_stop_cleans_up_server_process_group(parent_exits: bool, stop_kwargs):

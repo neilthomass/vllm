@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
 import json
+import shlex
 import socket
 import subprocess
 
@@ -27,12 +28,17 @@ def test_bench_startup():
 def test_bench_startup_serves_matching_completion_after_restart(tmp_path):
     port = get_open_port()
     output = tmp_path / "startup.json"
+    config = tmp_path / "serve.yaml"
+    config.write_text(f"host: 127.0.0.1\nport: {port}\n")
     cmd = [
         "vllm",
         "bench",
         "startup",
         "--serve-cmd",
-        f"vllm serve facebook/opt-125m --enforce-eager --port {port}",
+        (
+            "vllm serve facebook/opt-125m --enforce-eager "
+            f"--config {shlex.quote(str(config))}"
+        ),
         "--num-iters-cold",
         "1",
         "--num-iters-warmup",

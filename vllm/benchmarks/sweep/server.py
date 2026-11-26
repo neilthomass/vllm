@@ -5,12 +5,13 @@ import os
 import signal
 import subprocess
 import time
-from argparse import ArgumentError, ArgumentParser
+from argparse import ArgumentError
 from types import TracebackType
 from typing import BinaryIO, Self
 
 import requests
 
+from vllm.utils.argparse_utils import FlexibleArgumentParser
 from vllm.utils.network_utils import join_host_port
 
 
@@ -111,11 +112,17 @@ class ServerProcess:
         self.run_subcommand(self.after_bench_cmd)
 
     def _get_vllm_server_address(self) -> str:
-        parser = ArgumentParser(add_help=False, allow_abbrev=False, exit_on_error=False)
+        parser = FlexibleArgumentParser(
+            add_help=False, allow_abbrev=False, exit_on_error=False
+        )
+        parser.add_argument("--config")
         parser.add_argument("--host", default="localhost")
         parser.add_argument("-p", "--port", type=int, default=8000)
         try:
             args, _ = parser.parse_known_args(self.server_cmd)
+            if args.config and self.server_cmd[0].endswith("vllm"):
+                config_args = parser.load_config_file(args.config)
+                args, _ = parser.parse_known_args(config_args + self.server_cmd)
         except ArgumentError as exc:
             raise ValueError(str(exc)) from exc
         return "http://" + join_host_port(args.host, args.port)

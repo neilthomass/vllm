@@ -88,6 +88,13 @@ vllm bench sweep serve \
 
 By default, each parameter combination is benchmarked 3 times to make the results more reliable. You can adjust the number of runs by setting `--num-runs`.
 
+When `--serve-cmd` runs `vllm serve` with `--config serve.yaml`, readiness
+checks and cache resets use the YAML file's `host` and `port`. Explicit
+`--host` and `--port` (or `-p`) options override the config values, even when
+they appear before `--config`. Set the same address in `--bench-cmd`; its
+connection options are independent of `--serve-cmd`.
+This address lookup also applies to `vllm bench startup --serve-cmd`.
+
 You can optionally run an unmeasured warmup before each parameter combination by setting `--warmup-num-prompts`. The warmup result is saved as `warmup.json` for inspection, but is excluded from the measured summary.
 
 You can use `--continue-on-error` to record a failed warmup, benchmark run, or server configuration and continue processing the remaining sweep combinations. Failure details are saved in `.failure.json` files.
